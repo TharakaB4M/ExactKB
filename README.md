@@ -24,6 +24,8 @@ The site also includes tool-specific guides and FAQs, three target-size landing 
 
 The Google AdSense loader is included site-wide using publisher ID `ca-pub-8046244432202885`. This loader alone does not create ad placements. AdSense account/site approval, ad units or Auto ads settings, consent configuration where required, and any `ads.txt` instructions from AdSense must be completed in the Google account.
 
+The publisher authorization record is published at `/ads.txt` using the seller details supplied for this site.
+
 ## Before deployment
 
 1. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SITE_URL` to your HTTPS domain origin (for example `https://yourdomain.com`, with no path). Without it, the generated sitemap stays empty rather than publishing placeholder URLs.
