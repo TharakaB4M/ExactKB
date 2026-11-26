@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import { getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
@@ -19,14 +18,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en">
-      <body>
-        {children}
-        <Script
-          id="google-adsense"
+      <head>
+        <script
+          async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8046244432202885"
-          strategy="afterInteractive"
           crossOrigin="anonymous"
         />
+      </head>
+      <body>
+        {children}
       </body>
     </html>
   );
