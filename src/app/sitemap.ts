@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
 import { articles } from "@/lib/articles";
+import { getSiteUrl } from "@/lib/site-url";
 import { sizeLandingPages, tools } from "@/lib/tools";
 
 export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://example.com").replace(/\/$/, "");
+  const siteUrl = getSiteUrl();
+  if (!siteUrl) return [];
   const pages = [
     "",
     "/about",

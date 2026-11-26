@@ -14,17 +14,19 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { PDFDocument } from "pdf-lib";
-import JSZip from "jszip";
-import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import Image from "next/image";
+import { ChangeEvent, DragEvent, useEffect, useRef, useState } from "react";
 import type { Tool } from "@/lib/tools";
+import { combineFileSelection } from "@/lib/file-selection.mjs";
+import { parsePageSelection } from "@/lib/page-selection.mjs";
 
 type DownloadFile = { name: string; blob: Blob };
 type SocialPreset = { label: string; width: number; height: number };
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
 const MAX_FILES = 20;
-const MAX_IMAGE_PIXELS = 40_000_000;
+const MAX_IMAGE_PIXELS = 24_000_000;
+const MAX_PDF_IMAGE_PIXELS = 48_000_000;
 const MAX_PDF_PAGES = 500;
 
 const socialPresets: SocialPreset[] = [
@@ -79,23 +81,30 @@ async function loadBitmap(file: File) {
   return bitmap;
 }
 
-async function imageBlob(file: File, type: string, quality = 0.92) {
-  const image = await loadBitmap(file);
+async function bitmapBlob(image: ImageBitmap, type: string, quality: number, maxDimension?: number) {
+  const scale = maxDimension
+    ? Math.min(1, maxDimension / Math.max(image.width, image.height))
+    : 1;
   const canvas = document.createElement("canvas");
-  canvas.width = image.width;
-  canvas.height = image.height;
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
   const context = canvas.getContext("2d");
-  if (!context) {
-    image.close();
-    throw new Error("Your browser could not start image processing.");
-  }
+  if (!context) throw new Error("Your browser could not start image processing.");
   if (type === "image/jpeg") {
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, canvas.width, canvas.height);
   }
-  context.drawImage(image, 0, 0);
-  image.close();
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
   return canvasBlob(canvas, type, quality);
+}
+
+async function imageBlob(file: File, type: string, quality = 0.92) {
+  const image = await loadBitmap(file);
+  try {
+    return await bitmapBlob(image, type, quality);
+  } finally {
+    image.close();
+  }
 }
 
 function download(blob: Blob, name: string) {
@@ -138,50 +147,65 @@ async function compressToTarget(file: File, targetBytes: number): Promise<{ blob
   let best: Blob | undefined;
   let resized = false;
 
-  for (let pass = 0; pass < 9; pass += 1) {
-    canvas.width = width;
-    canvas.height = height;
-    context.fillStyle = "#ffffff";
-    context.fillRect(0, 0, width, height);
-    context.drawImage(source, 0, 0, width, height);
+  try {
+    for (let pass = 0; pass < 9; pass += 1) {
+      canvas.width = width;
+      canvas.height = height;
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(source, 0, 0, width, height);
 
-    let low = 0.12;
-    let high = 0.96;
-    let passBest: Blob | undefined;
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      const quality = (low + high) / 2;
-      const candidate = await canvasBlob(canvas, "image/jpeg", quality);
-      if (!passBest || candidate.size < passBest.size) passBest = candidate;
-      if (candidate.size <= targetBytes) {
-        best = candidate;
-        low = quality;
-      } else {
-        high = quality;
+      let low = 0.12;
+      let high = 0.96;
+      let passBest: Blob | undefined;
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        const quality = (low + high) / 2;
+        const candidate = await canvasBlob(canvas, "image/jpeg", quality);
+        if (!passBest || candidate.size < passBest.size) passBest = candidate;
+        if (candidate.size <= targetBytes) {
+          best = candidate;
+          low = quality;
+        } else {
+          high = quality;
+        }
       }
+      if (passBest && (!best || (passBest.size < best.size && passBest.size > targetBytes))) best = passBest;
+      if (best && best.size <= targetBytes) break;
+      if (Math.min(width, height) <= 160) break;
+      width = Math.max(160, Math.round(width * 0.86));
+      height = Math.max(160, Math.round(height * 0.86));
+      resized = true;
     }
-    if (passBest && (!best || (passBest.size < best.size && passBest.size > targetBytes))) best = passBest;
-    if (best && best.size <= targetBytes) break;
-    if (Math.min(width, height) <= 160) break;
-    width = Math.max(160, Math.round(width * 0.86));
-    height = Math.max(160, Math.round(height * 0.86));
-    resized = true;
+  } finally {
+    source.close();
   }
-  source.close();
   if (!best) throw new Error("The image could not be compressed.");
   return { blob: best, resized };
 }
 
 async function imageToPdf(files: File[]) {
+  const { PDFDocument } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
+  let totalImagePixels = 0;
   for (const file of files) {
-    let imageBytes: Uint8Array;
+    const source = await loadBitmap(file);
+    totalImagePixels += source.width * source.height;
+    if (totalImagePixels > MAX_PDF_IMAGE_PIXELS) {
+      source.close();
+      throw new Error("The images together have too many pixels for one PDF. Try fewer or smaller images.");
+    }
+    let blob: Blob;
     let embedded: Awaited<ReturnType<typeof pdf.embedJpg>>;
-    if (file.type === "image/png") {
-      imageBytes = new Uint8Array(await file.arrayBuffer());
+    try {
+      const keepTransparency = file.type === "image/png";
+      blob = await bitmapBlob(source, keepTransparency ? "image/png" : "image/jpeg", 0.92, 3000);
+    } finally {
+      source.close();
+    }
+    const imageBytes = new Uint8Array(await blob.arrayBuffer());
+    if (blob.type === "image/png") {
       embedded = await pdf.embedPng(imageBytes);
     } else {
-      const blob = file.type === "image/jpeg" ? file : await imageBlob(file, "image/jpeg");
-      imageBytes = new Uint8Array(await blob.arrayBuffer());
       embedded = await pdf.embedJpg(imageBytes);
     }
     const page = pdf.addPage([595.28, 841.89]);
@@ -199,23 +223,6 @@ async function imageToPdf(files: File[]) {
   return pdfBlob(await pdf.save());
 }
 
-function parsePageSelection(value: string, pageCount: number) {
-  const pages = new Set<number>();
-  const segments = value.split(",").map((part) => part.trim()).filter(Boolean);
-  if (!segments.length) throw new Error("Enter at least one page number or range.");
-  for (const segment of segments) {
-    const match = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(segment);
-    if (!match) throw new Error("Use page numbers and ranges like 1,3-5.");
-    const start = Number(match[1]);
-    const end = Number(match[2] ?? match[1]);
-    if (start < 1 || end < start || end > pageCount) {
-      throw new Error(`Page numbers must be between 1 and ${pageCount}.`);
-    }
-    for (let page = start; page <= end; page += 1) pages.add(page - 1);
-  }
-  return [...pages].sort((a, b) => a - b);
-}
-
 export default function ToolWorkspace({
   tool,
   initialTargetKb,
@@ -224,10 +231,15 @@ export default function ToolWorkspace({
   initialTargetKb?: number;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const photoPreviewUrlRef = useRef<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [appendSelection, setAppendSelection] = useState(false);
   const [targetKb, setTargetKb] = useState(initialTargetKb ?? 50);
   const [format, setFormat] = useState("image/webp");
   const [photoSize, setPhotoSize] = useState("35x45");
+  const [cropX, setCropX] = useState(50);
+  const [cropY, setCropY] = useState(50);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [socialPreset, setSocialPreset] = useState(socialPresets[0]);
   const [fitMode, setFitMode] = useState<"fill" | "fit">("fill");
   const [pdfMode, setPdfMode] = useState<"merge" | "split">("merge");
@@ -239,7 +251,19 @@ export default function ToolWorkspace({
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
 
-  const chooseFiles = (selected: FileList | File[]) => {
+  useEffect(() => {
+    return () => {
+      if (photoPreviewUrlRef.current) URL.revokeObjectURL(photoPreviewUrlRef.current);
+    };
+  }, []);
+
+  const updatePhotoPreview = (file?: File) => {
+    if (photoPreviewUrlRef.current) URL.revokeObjectURL(photoPreviewUrlRef.current);
+    photoPreviewUrlRef.current = file ? URL.createObjectURL(file) : null;
+    setPhotoPreviewUrl(photoPreviewUrlRef.current ?? "");
+  };
+
+  const chooseFiles = (selected: FileList | File[], append = false) => {
     const selectedFiles = Array.from(selected);
     const valid = selectedFiles.filter((file) => {
       if (tool.id === "merge-pdf") return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
@@ -249,26 +273,29 @@ export default function ToolWorkspace({
       setError(tool.id === "merge-pdf" ? "Choose a PDF file to continue." : "Choose a supported image file to continue.");
       return;
     }
-    if (valid.some((file) => file.size > MAX_FILE_BYTES)) {
-      setError("Each file must be 25 MB or smaller to help keep browser memory use manageable.");
+    let nextFiles: File[];
+    try {
+      nextFiles = combineFileSelection(files, valid, {
+        append,
+        multiple: tool.multiple,
+        maxFiles: MAX_FILES,
+        maxFileBytes: MAX_FILE_BYTES,
+        maxTotalBytes: MAX_TOTAL_BYTES,
+      });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "The selected files exceed the browser safety limits.");
       return;
     }
-    if (valid.length > MAX_FILES) {
-      setError(`Choose no more than ${MAX_FILES} files at a time.`);
-      return;
-    }
-    if (valid.reduce((total, file) => total + file.size, 0) > MAX_TOTAL_BYTES) {
-      setError("The selected files together must be 100 MB or smaller.");
-      return;
-    }
-    setFiles(tool.multiple ? valid : valid.slice(0, 1));
+    setFiles(nextFiles);
+    if (tool.id === "passport-photo") updatePhotoPreview(nextFiles[0]);
     setOutputs([]);
     setError("");
     setNotice("");
   };
 
   const handleInput = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) chooseFiles(event.target.files);
+    if (event.target.files) chooseFiles(event.target.files, appendSelection);
+    setAppendSelection(false);
     event.target.value = "";
   };
 
@@ -279,7 +306,9 @@ export default function ToolWorkspace({
   };
 
   const removeFile = (index: number) => {
-    setFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
+    const remaining = files.filter((_, fileIndex) => fileIndex !== index);
+    setFiles(remaining);
+    if (tool.id === "passport-photo") updatePhotoPreview(remaining[0]);
     setOutputs([]);
   };
 
@@ -307,8 +336,8 @@ export default function ToolWorkspace({
     const cropScale = Math.max(photoWidth / source.width, photoHeight / source.height);
     const cropWidth = photoWidth / cropScale;
     const cropHeight = photoHeight / cropScale;
-    const sourceX = (source.width - cropWidth) / 2;
-    const sourceY = (source.height - cropHeight) / 2;
+    const sourceX = (source.width - cropWidth) * (cropX / 100);
+    const sourceY = (source.height - cropHeight) * (cropY / 100);
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < columns; column += 1) {
         const x = margin + column * (photoWidth + gap);
@@ -380,6 +409,7 @@ export default function ToolWorkspace({
         nextOutputs = converted;
       } else if (tool.id === "passport-photo") {
         const sheet = await makePassportSheet(files[0]);
+        const { PDFDocument } = await import("pdf-lib");
         const pdf = await PDFDocument.create();
         const embedded = await pdf.embedJpg(new Uint8Array(await sheet.arrayBuffer()));
         const page = pdf.addPage([595.28, 841.89]);
@@ -393,6 +423,7 @@ export default function ToolWorkspace({
         const blob = await imageToPdf(files);
         nextOutputs = [{ name: "images.pdf", blob }];
       } else if (tool.id === "merge-pdf") {
+        const { PDFDocument } = await import("pdf-lib");
         if (pdfMode === "merge") {
           if (files.length < 2) throw new Error("Choose at least two PDF files to merge, or switch to Split pages.");
           const merged = await PDFDocument.create();
@@ -411,6 +442,7 @@ export default function ToolWorkspace({
           if (source.getPageCount() > MAX_PDF_PAGES) throw new Error(`PDFs are limited to ${MAX_PDF_PAGES} pages per operation.`);
           const pageIndexes = parsePageSelection(pageSelection, source.getPageCount());
           if (separatePages) {
+            const { default: JSZip } = await import("jszip");
             const zip = new JSZip();
             for (const pageIndex of pageIndexes) {
               const extracted = await PDFDocument.create();
@@ -441,6 +473,7 @@ export default function ToolWorkspace({
       download(outputs[0].blob, outputs[0].name);
       return;
     }
+    const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     outputs.forEach((output) => zip.file(output.name, output.blob));
     download(await zip.generateAsync({ type: "blob" }), "prepkit-files.zip");
@@ -500,7 +533,7 @@ export default function ToolWorkspace({
               </div>
             ))}
             {tool.multiple && (
-              <button type="button" className="add-more-button" onClick={() => inputRef.current?.click()}>
+              <button type="button" className="add-more-button" onClick={() => { setAppendSelection(true); inputRef.current?.click(); }}>
                 <FilePlus2 size={16} /> Add more files
               </button>
             )}
@@ -525,12 +558,39 @@ export default function ToolWorkspace({
         )}
 
         {tool.id === "passport-photo" && (
-          <div className="option-block">
-            <label htmlFor="photo-size">Photo print size</label>
-            <select id="photo-size" value={photoSize} onChange={(event) => setPhotoSize(event.target.value)}>
-              <option value="35x45">35 × 45 mm · common passport size</option><option value="2x2">2 × 2 in · US-style</option>
-            </select>
-          </div>
+          <>
+            <div className="option-block">
+              <label htmlFor="photo-size">Photo print size</label>
+              <select id="photo-size" value={photoSize} onChange={(event) => setPhotoSize(event.target.value)}>
+                <option value="35x45">35 × 45 mm · common passport size</option><option value="2x2">2 × 2 in · US-style</option>
+              </select>
+            </div>
+            {photoPreviewUrl && (
+              <div className="crop-controls">
+                <div className="crop-heading"><strong>Adjust your crop</strong><span>Move the photo to frame the face.</span></div>
+                <div
+                  className="passport-preview"
+                  style={{ aspectRatio: photoSize === "2x2" ? "1 / 1" : "35 / 45" }}
+                  aria-label="Passport photo crop preview"
+                >
+                  <Image
+                    className="crop-preview-image"
+                    src={photoPreviewUrl}
+                    alt="Preview of the selected photo crop"
+                    fill
+                    unoptimized
+                    sizes="220px"
+                    style={{ objectPosition: `${cropX}% ${cropY}%` }}
+                  />
+                </div>
+                <label htmlFor="crop-horizontal">Horizontal position</label>
+                <input id="crop-horizontal" type="range" min="0" max="100" value={cropX} onChange={(event) => setCropX(Number(event.target.value))} />
+                <label htmlFor="crop-vertical">Vertical position</label>
+                <input id="crop-vertical" type="range" min="0" max="100" value={cropY} onChange={(event) => setCropY(Number(event.target.value))} />
+                <button type="button" className="crop-reset" onClick={() => { setCropX(50); setCropY(50); }}>Reset to center</button>
+              </div>
+            )}
+          </>
         )}
 
         {tool.id === "social-resizer" && (

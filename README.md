@@ -24,7 +24,7 @@ The site also includes tool-specific guides and FAQs, three target-size landing 
 
 ## Before deployment
 
-1. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SITE_URL` to the canonical public URL.
+1. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SITE_URL` to your HTTPS domain origin (for example `https://yourdomain.com`, with no path). Without it, the generated sitemap stays empty rather than publishing placeholder URLs.
 2. Set `NEXT_PUBLIC_CONTACT_EMAIL` to an email address that you monitor.
 3. Review the privacy policy, terms, photo instructions, and all content for your intended audience and jurisdiction.
 4. Verify every tool against your target browsers and real sample files.
@@ -34,10 +34,11 @@ Check and build:
 
 ```bash
 npm run lint
+npm test
 npm run build
 ```
 
-The production build is exported to `out/` as static files. Deploy that folder to Cloudflare Pages (build command `npm run build`, output directory `out`) or another static host. The `public/_headers` file configures security headers on Cloudflare Pages; configure equivalent headers in your host if deploying elsewhere. Set the environment values in the hosting dashboard before building. The app does not use a file-processing backend or database. Domain registration, analytics, and any advertising setup are separate deployment decisions.
+The production build is exported to `out/` as static files. Deploy that folder to Cloudflare Pages (build command `npm run build`, output directory `out`) or another static host. The `public/_headers` file configures security headers, including HSTS, on Cloudflare Pages; configure equivalent headers in your host if deploying elsewhere. HSTS assumes the site is served over HTTPS. Set the environment values in the hosting dashboard before building. The app does not use a file-processing backend or database. Domain registration, analytics, and any advertising setup are separate deployment decisions.
 
 ## Important limitations
 

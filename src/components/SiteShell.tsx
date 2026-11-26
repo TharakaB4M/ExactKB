@@ -4,6 +4,7 @@ import { ArrowUpRight, Sparkles } from "lucide-react";
 export function SiteHeader() {
   return (
     <header className="site-header">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <div className="header-inner">
         <Link className="brand" href="/" aria-label="PrepKit home">
           <span className="brand-mark"><Sparkles size={18} strokeWidth={2.2} /></span>
@@ -39,5 +40,5 @@ export function SiteFooter() {
 }
 
 export function PageFrame({ children }: { children: React.ReactNode }) {
-  return <><SiteHeader /><main className="page-main">{children}</main><SiteFooter /></>;
+  return <><SiteHeader /><main className="page-main" id="main-content">{children}</main><SiteFooter /></>;
 }

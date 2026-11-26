@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test src/lib/page-selection.test.mjs src/lib/file-selection.test.mjs"
   },
   "dependencies": {
     "jszip": "^3.10.2",
