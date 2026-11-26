@@ -1,0 +1,49 @@
+# PrepKit
+
+PrepKit is a static-friendly Next.js site with browser-based image and PDF utilities. Image processing and PDF operations run on the visitor's device; selected files are not uploaded to the app.
+
+## Run locally
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Included tools
+
+- Compress an image to a chosen KB limit
+- Create an A4 passport / ID photo sheet (35 × 45 mm or 2 × 2 in)
+- Convert JPG, PNG, and WebP images in batches
+- Turn multiple images into an A4 PDF
+- Merge PDFs or extract selected page numbers / ranges
+- Resize images for common social media formats
+
+The site also includes tool-specific guides and FAQs, three target-size landing pages, four editorial articles, policy pages, a sitemap, and a robots file.
+
+## Before deployment
+
+1. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SITE_URL` to the canonical public URL.
+2. Set `NEXT_PUBLIC_CONTACT_EMAIL` to an email address that you monitor.
+3. Review the privacy policy, terms, photo instructions, and all content for your intended audience and jurisdiction.
+4. Verify every tool against your target browsers and real sample files.
+5. Replace the placeholder domain in sitemap output by setting the environment variable above.
+
+Check and build:
+
+```bash
+npm run lint
+npm run build
+```
+
+The production build is exported to `out/` as static files. Deploy that folder to Cloudflare Pages (build command `npm run build`, output directory `out`) or another static host. The `public/_headers` file configures security headers on Cloudflare Pages; configure equivalent headers in your host if deploying elsewhere. Set the environment values in the hosting dashboard before building. The app does not use a file-processing backend or database. Domain registration, analytics, and any advertising setup are separate deployment decisions.
+
+## Important limitations
+
+- Compressed file size is a best-effort maximum. Some images cannot meet a very small target without significant quality or dimension loss; the tool reports when this happens.
+- Passport and ID photo requirements vary. The print-sheet feature sets dimensions only and does not guarantee acceptance.
+- PDF support depends on browser memory and the PDF format. Password-protected or damaged PDFs may not open.
+- Input files are capped at 25 MB each, 100 MB total, and 20 files per operation to reduce accidental browser memory exhaustion.
+- The contact page shows `venomtracker000@gmail.com` unless `NEXT_PUBLIC_CONTACT_EMAIL` overrides it.
+- The site footer credits Pahan Tharaka and links to [github.com/TharakaB4M](https://github.com/TharakaB4M).
