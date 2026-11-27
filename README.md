@@ -28,11 +28,11 @@ The publisher authorization record is published at `/ads.txt` using the seller d
 
 ## Before deployment
 
-1. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SITE_URL` to your HTTPS domain origin (for example `https://yourdomain.com`, with no path). Without it, the generated sitemap stays empty rather than publishing placeholder URLs.
+1. Copy `.env.example` to `.env.local`. It is prefilled with `https://www.extractkb.me`; confirm this is the production canonical domain and set the same value in the hosting dashboard before building for production. The value is used for canonical links, social sharing URLs, structured data, `robots.txt`, and `sitemap.xml`. Without it, the sitemap stays empty and domain-dependent metadata is omitted rather than publishing placeholder URLs.
 2. Set `NEXT_PUBLIC_CONTACT_EMAIL` to an email address that you monitor.
 3. Review the privacy policy, terms, photo instructions, and all content for your intended audience and jurisdiction.
 4. Verify every tool against your target browsers and real sample files.
-5. Replace the placeholder domain in sitemap output by setting the environment variable above.
+5. After deployment, verify the site in Google Search Console, submit `/sitemap.xml`, and inspect key URLs. Correct technical SEO helps discovery but cannot guarantee a particular search position.
 
 Check and build:
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Editorial from "@/components/Editorial";
 import { articles } from "@/lib/articles";
+import { getPageMetadata } from "@/lib/site-url";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -13,7 +14,9 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const article = articles.find((item) => item.slug === slug);
-  return article ? { title: article.title, description: article.summary } : {};
+  return article
+    ? getPageMetadata(`/blog/${article.slug}`, article.title, article.summary, "article")
+    : {};
 }
 
 export default async function ArticlePage({ params }: Props) {

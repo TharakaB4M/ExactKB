@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import Editorial from "@/components/Editorial";
 import { articles } from "@/lib/articles";
+import { getPageMetadata } from "@/lib/site-url";
 
-export const metadata: Metadata = {
-  title: "The PrepKit Journal",
-  description: "Practical guides to image sizes, file formats, privacy, and getting documents ready to share.",
-};
+export const metadata = getPageMetadata(
+  "/blog",
+  "The Journal",
+  "Practical guides to image sizes, file formats, privacy, and getting documents ready to share.",
+);
 
 export default function BlogPage() {
   return (

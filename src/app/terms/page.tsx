@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
 import Editorial from "@/components/Editorial";
+import { getPageMetadata } from "@/lib/site-url";
 
-export const metadata: Metadata = {
-  title: "Terms of Use",
-  description: "Terms for using PrepKit's free, browser-based image and PDF utilities.",
-};
+export const metadata = getPageMetadata(
+  "/terms",
+  "Terms of Use",
+  "Terms for using PrepKit's free, browser-based image and PDF utilities.",
+);
 
 export default function TermsPage() {
   return (

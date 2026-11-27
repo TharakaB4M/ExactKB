@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
 import Editorial from "@/components/Editorial";
+import { getPageMetadata } from "@/lib/site-url";
 
-export const metadata: Metadata = {
-  title: "About PrepKit",
-  description: "Why we made PrepKit: simple, private image and PDF tools for everyday file-prep tasks.",
-};
+export const metadata = getPageMetadata(
+  "/about",
+  "About",
+  "Why we made PrepKit: simple, private image and PDF tools for everyday file-prep tasks.",
+);
 
 export default function AboutPage() {
   return (

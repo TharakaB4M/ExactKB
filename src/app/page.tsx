@@ -15,9 +15,16 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PageFrame } from "@/components/SiteShell";
+import { getPageMetadata } from "@/lib/site-url";
 import { tools } from "@/lib/tools";
 
 const icons = [Shrink, ScanLine, Images, FileText, FileImage, Sparkles];
+
+export const metadata = getPageMetadata(
+  "/",
+  "Free Image & PDF Tools | PrepKit",
+  "Free, private image and PDF tools that work right in your browser. Compress, convert, resize, and prepare files without uploading them.",
+);
 
 export default function Home() {
   return (

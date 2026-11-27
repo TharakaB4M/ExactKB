@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
 import Editorial from "@/components/Editorial";
+import { getPageMetadata } from "@/lib/site-url";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "Learn how PrepKit handles your information and why files stay in your browser.",
-};
+export const metadata = getPageMetadata(
+  "/privacy-policy",
+  "Privacy Policy",
+  "Learn how PrepKit handles your information and why files stay in your browser.",
+);
 
 export default function PrivacyPolicyPage() {
   return (

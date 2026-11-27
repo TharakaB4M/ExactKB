@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import ToolWorkspace, { ToolInstructions } from "@/components/ToolWorkspace";
 import { PageFrame } from "@/components/SiteShell";
+import { getPageMetadata } from "@/lib/site-url";
 import { getTool, sizeLandingPages, tools } from "@/lib/tools";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -39,10 +40,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const page = getPage(slug);
   if (!page) return {};
-  return {
-    title: `${page.tool.title} — Free, Private Online Tool | PrepKit`,
-    description: page.tool.description,
-  };
+  return getPageMetadata(
+    `/tools/${slug}`,
+    `${page.tool.title} — Free, Private Online Tool`,
+    page.tool.description,
+  );
 }
 
 export default async function ToolPage({ params }: Props) {
