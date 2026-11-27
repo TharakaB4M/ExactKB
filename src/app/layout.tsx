@@ -6,18 +6,16 @@ const siteUrl = getSiteUrl();
 const defaultTitle = "Free Image & PDF Tools | PrepKit";
 const defaultDescription =
   "Free, private image and PDF tools that work right in your browser. Compress, convert, resize, and prepare files without uploading them.";
-const websiteSchema = siteUrl
-  ? {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      name: "PrepKit",
-      alternateName: "PrepKit image and PDF tools",
-      url: siteUrl,
-    }
-  : undefined;
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "PrepKit",
+  alternateName: "PrepKit image and PDF tools",
+  url: siteUrl,
+};
 
 export const metadata: Metadata = {
-  metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+  metadataBase: new URL(siteUrl),
   title: {
     default: defaultTitle,
     template: "%s | PrepKit",
@@ -50,14 +48,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
       </head>
       <body>
-        {websiteSchema && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{
-              __html: JSON.stringify(websiteSchema).replace(/</g, "\\u003c"),
-            }}
-          />
-        )}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteSchema).replace(/</g, "\\u003c"),
+          }}
+        />
         {children}
       </body>
     </html>

@@ -7,7 +7,6 @@ export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getSiteUrl();
-  if (!siteUrl) return [];
   const pages = [
     "",
     "/about",

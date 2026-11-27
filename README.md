@@ -28,7 +28,7 @@ The publisher authorization record is published at `/ads.txt` using the seller d
 
 ## Before deployment
 
-1. Copy `.env.example` to `.env.local`. It is prefilled with `https://www.extractkb.me`; confirm this is the production canonical domain and set the same value in the hosting dashboard before building for production. The value is used for canonical links, social sharing URLs, structured data, `robots.txt`, and `sitemap.xml`. Without it, the sitemap stays empty and domain-dependent metadata is omitted rather than publishing placeholder URLs.
+1. Copy `.env.example` to `.env.local` if you need to override the canonical origin. The production domain defaults to `https://www.extractkb.me`, so canonical links, social sharing URLs, structured data, `robots.txt`, and `sitemap.xml` still work if the host environment variable is unset. Set `NEXT_PUBLIC_SITE_URL` in the hosting dashboard when changing domains.
 2. Set `NEXT_PUBLIC_CONTACT_EMAIL` to an email address that you monitor.
 3. Review the privacy policy, terms, photo instructions, and all content for your intended audience and jurisdiction.
 4. Verify every tool against your target browsers and real sample files.

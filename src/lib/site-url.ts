@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 
-export function getSiteUrl(): string | undefined {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!configured) return undefined;
+export function getSiteUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://www.extractkb.me";
 
   let url: URL;
   try {
